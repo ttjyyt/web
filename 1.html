@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫雷大挑战</title>
+    <style>
+        /* --- 视频背景样式 --- */
+        #video-background {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: -1; opacity: 0.5;
+        }
+
+        /* --- 整体页面布局 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; color: #333;
+        }
+        
+        #main-content { text-align: center; }
+
+        h1 {
+            color: white; font-size: 2.5em; text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+            margin-bottom: 20px;
+        }
+
+        /* --- 游戏容器样式 --- */
+        #game-container {
+            background-color: rgba(192, 192, 192, 0.95); padding: 15px;
+            border: 3px solid; border-color: #fff #808080 #808080 #fff;
+            box-shadow: 5px 5px 10px rgba(0,0,0,0.5); border-radius: 5px;
+        }
+
+        #header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; margin-bottom: 10px; border: 3px solid;
+            border-color: #808080 #fff #fff #808080;
+        }
+
+        .counter {
+            background-color: #000; color: #ff0000; font-family: 'Courier New', Courier, monospace;
+            font-size: 28px; font-weight: bold; padding: 5px 10px; border: 2px inset #808080;
+        }
+
+        #reset-button {
+            width: 40px; height: 40px; font-size: 28px; border: 3px solid;
+            border-color: #fff #808080 #808080 #fff; background-color: #c0c0c0;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+        }
+        
+        #reset-button:active { border-color: #808080 #fff #fff #808080; }
+
+        /* --- 扫雷格子样式 --- */
+        #grid { display: grid; border: 3px solid; border-color: #808080 #fff #fff #808080; }
+
+        .cell {
+            width: 30px; height: 30px; background-color: #c0c0c0; border: 2px solid;
+            border-color: #fff #808080 #808080 #fff; box-sizing: border-box;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: bold; cursor: pointer;
+        }
+
+        .cell.revealed { background-color: #bdbdbd; border: 1px solid #7b7b7b; }
+        .cell.revealed.mine { background-color: red; }
+        
+        .c1 { color: #0000ff; } .c2 { color: #008000; } .c3 { color: #ff0000; }
+        .c4 { color: #000080; } .c5 { color: #800000; } .c6 { color: #008080; }
+        .c7 { color: #000000; } .c8 { color: #808080; }
+        
+        /* --- 结果弹窗样式 --- */
+        #result-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.75); display: none;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+
+        #result-box {
+            background-color: #fff; padding: 25px; border-radius: 10px; text-align: center;
+            max-width: 90%; max-height: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #result-box h2 { margin-top: 0; color: #333; }
+        #result-box p { font-size: 1.1em; color: #555; }
+        #result-box a { color: #007bff; text-decoration: none; font-weight: bold; word-break: break-all; }
+        #result-box a:hover { text-decoration: underline; }
+        #result-box img { max-width: 100%; height: auto; margin-top: 15px; border-radius: 5px; }
+
+        /* --- 修改后的按钮样式 --- */
+        #restart-challenge-button {
+            margin-top: 20px; padding: 10px 25px; font-size: 1em; color: #fff;
+            background-color: #007bff; border: none; border-radius: 5px;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        #restart-challenge-button:hover { background-color: #0056b3; }
+
+        /* 视频控制按钮容器 */
+        #video-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            display: flex;
+            gap: 10px; /* 按钮之间的间距 */
+        }
+
+        .control-button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: 1px solid white;
+            border-radius: 5px;
+            cursor: pointer;
+            white-space: nowrap; /* 防止文字换行 */
+        }
+    </style>
+</head>
+<body>
+
+<!-- 背景视频 -->
+<video id="video-background" muted loop playsinline src="https://vdse.bdstatic.com//9f1552101509ecbd5977405c692302c9.mp4"></video>
+
+<!-- 视频控制按钮容器 -->
+<div id="video-controls">
+    <button id="video-control-button" class="control-button">播放视频</button>
+    <button id="sound-control-button" class="control-button">开启背景音乐</button>
+</div>
+
+<!-- 页面主要内容 -->
+<div id="main-content">
+    <h1>通关扫雷有奖励</h1>
+    <div id="game-container">
+        <div id="header">
+            <div id="mine-counter" class="counter">010</div>
+            <div id="reset-button">😊</div>
+            <div id="timer" class="counter">000</div>
+        </div>
+        <div id="grid"></div>
+    </div>
+</div>
+
+<!-- 结果显示弹窗 -->
+<div id="result-overlay">
+    <div id="result-box">
+        <!-- 内容将由JavaScript动态填充 -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 获取元素
+    const video = document.getElementById('video-background');
+    const videoControlButton = document.getElementById('video-control-button');
+    const soundControlButton = document.getElementById('sound-control-button');
+    const grid = document.getElementById('grid');
+    const mineCounter = document.getElementById('mine-counter');
+    const resetButton = document.getElementById('reset-button');
+    const timerDisplay = document.getElementById('timer');
+    const resultOverlay = document.getElementById('result-overlay');
+    const resultBox = document.getElementById('result-box');
+
+    // 游戏设置
+    const ROWS = 10, COLS = 10, MINES_COUNT = 10;
+    let board = [], gameOver = false, flags = 0, firstClick = true, timer, time = 0;
+
+    // --- 修改后的视频控制逻辑 ---
+    videoControlButton.addEventListener('click', () => {
+        if (video.paused) {
+            video.play();
+            videoControlButton.textContent = '暂停视频';
+        } else {
+            video.pause();
+            videoControlButton.textContent = '播放视频';
+        }
+    });
+
+    // --- 修改后的声音控制逻辑 ---
+    soundControlButton.addEventListener('click', () => {
+        video.muted = !video.muted; // 切换静音状态
+        soundControlButton.textContent = video.muted ? '开启背景音乐' : '关闭背景音乐';
+    });
+
+
+    // --- 游戏逻辑 (未改变) ---
+    function init() {
+        gameOver = false;
+        firstClick = true;
+        flags = 0;
+        grid.innerHTML = '';
+        grid.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+        resetButton.textContent = '😊';
+        resultOverlay.style.display = 'none';
+        updateMineCounter();
+        stopTimer();
+        timerDisplay.textContent = '000';
+        board = Array.from({ length: ROWS }, (_, r) => 
+            Array.from({ length: COLS }, (_, c) => ({
+                r, c, isMine: false, isRevealed: false, isFlagged: false, neighborMines: 0,
+                element: createCellElement(r, c)
+            }))
+        );
+    }
+    function createCellElement(r, c) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.addEventListener('click', () => onCellClick(r, c));
+        cell.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            onRightClick(r, c);
+        });
+        grid.appendChild(cell);
+        return cell;
+    }
+    function onCellClick(r, c) {
+        if (gameOver || board[r][c].isRevealed || board[r][c].isFlagged) return;
+        if (firstClick) {
+            placeMines(r, c);
+            startTimer();
+            firstClick = false;
+        }
+        const cell = board[r][c];
+        revealCell(cell);
+        if (cell.isMine) {
+            endGame(false);
+        } else {
+            checkWin();
+        }
+    }
+    function endGame(isWin) {
+        gameOver = true;
+        stopTimer();
+        resultOverlay.style.display = 'flex';
+        if (isWin) {
+            resetButton.textContent = '😎';
+            resultBox.innerHTML = `
+                <h2>恭喜你挑战成功！</h2>
+                <p>告诉你一个最强AI网站：</p>
+                <a href="https://fumu-gender.netlify.app" target="_blank">https://fumu-gender.netlify.app</a>
+            `;
+        } else {
+            resetButton.textContent = '😵';
+            resultBox.innerHTML = `
+                <h2>挑战失败</h2>
+                <img src="https://tse2.mm.bing.net/th/id/OIP.rZisMmSKzRIYJvjY-WUp6QHaHa?dpr=2&pid=ImgDetMain&o=7&rm=3" alt="挑战失败">
+                <br>
+                <button id="restart-challenge-button">重新挑战</button>
+            `;
+            document.getElementById('restart-challenge-button').addEventListener('click', init);
+            board.forEach(row => row.forEach(cell => {
+                if (cell.isMine) revealCell(cell);
+            }));
+        }
+    }
+    function placeMines(firstR, firstC) {
+        let minesPlaced = 0;
+        while (minesPlaced < MINES_COUNT) {
+            const r = Math.floor(Math.random() * ROWS), c = Math.floor(Math.random() * COLS);
+            if (!board[r][c].isMine && !(r === firstR && c === firstC)) {
+                board[r][c].isMine = true;
+                minesPlaced++;
+            }
+        }
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (!board[r][c].isMine) {
+            let count = 0;
+            getNeighbors(r, c).forEach(n => { if (n.isMine) count++; });
+            board[r][c].neighborMines = count;
+        }
+    }
+    function getNeighbors(r, c) {
+        const neighbors = [];
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) neighbors.push(board[nr][nc]);
+        }
+        return neighbors;
+    }
+    function revealCell(cell) {
+        if (cell.isRevealed || cell.isFlagged) return;
+        cell.isRevealed = true;
+        cell.element.classList.add('revealed');
+        if (cell.isMine) {
+            cell.element.classList.add('mine'); cell.element.textContent = '💣';
+        } else if (cell.neighborMines > 0) {
+            cell.element.textContent = cell.neighborMines; cell.element.classList.add(`c${cell.neighborMines}`);
+        } else { getNeighbors(cell.r, cell.c).forEach(n => revealCell(n)); }
+    }
+    function onRightClick(r, c) {
+        if (gameOver || board[r][c].isRevealed) return;
+        const cell = board[r][c];
+        cell.isFlagged = !cell.isFlagged;
+        cell.element.textContent = cell.isFlagged ? '🚩' : '';
+        flags += cell.isFlagged ? 1 : -1;
+        updateMineCounter();
+    }
+    function updateMineCounter() {
+        let count = MINES_COUNT - flags;
+        mineCounter.textContent = count.toString().padStart(3, '0');
+    }
+    function startTimer() {
+        if(timer) clearInterval(timer);
+        time = 0;
+        timerDisplay.textContent = '000';
+        timer = setInterval(() => {
+            time++;
+            if (time < 1000) timerDisplay.textContent = time.toString().padStart(3, '0');
+        }, 1000);
+    }
+    function stopTimer() { clearInterval(timer); }
+    function checkWin() {
+        const revealedNonMines = board.flat().filter(c => c.isRevealed && !c.isMine).length;
+        const totalNonMines = ROWS * COLS - MINES_COUNT;
+        if (revealedNonMines === totalNonMines) endGame(true);
+    }
+    resetButton.addEventListener('click', init);
+    init();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ查询</title>
+    <style>
+        /* CSS样式保持不变 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; background-color: #ffffff; color: #000000; margin: 0; padding: 20px 0; }
+        .container { background-color: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 90%; max-width: 700px; border: 1px solid #ddd; }
+        h1 { text-align: center; color: #000000; margin-top: 0; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #888; font-size: 14px; margin-top: 0; margin-bottom: 2rem; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 1rem; }
+        #qq-input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        #search-btn, .action-btn { padding: 12px 20px; border: none; background-color: #000000; color: #ffffff; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; text-decoration: none; display: inline-block; }
+        #search-btn:hover, .action-btn:hover { background-color: #333333; }
+        .action-buttons { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+        #result-container, #music-result-container { margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem; display: none; }
+        .result-grid { display: grid; grid-template-columns: 150px 1fr; gap: 12px 10px; align-items: start; }
+        .grid-item { display: contents; }
+        .grid-item strong { color: #333; font-weight: 600; text-align: right; }
+        .grid-item span, .grid-item img { color: #000000; word-break: break-all; }
+        #error-message, #loading { text-align: center; padding: 1rem; margin-top: 1rem; border-radius: 4px; display: none; }
+        #error-message { color: #D8000C; background-color: #FFD2D2; border: 1px solid #D8000C; }
+        #loading { color: #00529B; background-color: #BDE5F8; border: 1px solid #00529B; }
+        .result-avatar { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #eee; }
+        .section-title { font-size: 1.3rem; font-weight: bold; color: #000000; margin-top: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #000000; }
+        #playlist-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .playlist-card { border: 1px solid #eee; border-radius: 8px; padding: 10px; text-align: center; background-color: #f9f9f9; }
+        .playlist-pic { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px; background-color: #e0e0e0; }
+        .playlist-name { font-weight: bold; margin: 10px 0 5px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .playlist-songs { font-size: 13px; color: #666; margin: 0; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: #fff; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; text-align: left; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content p { margin-top: 0; line-height: 1.6; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QQ查询</h1>
+        <p class="subtitle">查询并非一定准确，且不是最新数据</p>
+
+        <div class="search-box">
+            <input type="text" id="qq-input" placeholder="请输入要查询的QQ号">
+            <button id="search-btn">查询信息</button>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="index.html" class="action-btn">返回首页</a>
+            <button id="search-music-btn" class="action-btn">查询QQ音乐</button>
+        </div>
+
+        <div id="loading">正在查询，请稍后...</div>
+        <div id="error-message"></div>
+
+        <div id="result-container">
+            <a href="#" id="profile-link-btn" class="action-btn" target="_blank" rel="noopener noreferrer" style="display: none; margin-bottom: 1.5rem;">转跳QQ名片</a>
+            
+            <div class="section-title">基本信息</div>
+            <div id="basic-info-container" class="result-grid"></div>
+            
+            <div class="section-title">QQ会员</div>
+            <div id="services-container" class="result-grid"></div>
+        </div>
+
+        <div id="music-result-container">
+            <div class="section-title">QQ音乐歌单</div>
+            <p><strong>用户昵称:</strong> <span id="music-nickname"></span></p>
+            <p><strong>主页链接:</strong> <a id="music-profile-link" href="#" target="_blank" rel="noopener noreferrer">点击跳转</a></p>
+            <div id="playlist-container"></div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal-content">
+            <p>此链接会让你转跳到QQ音乐应用，建议在使用手机端QQ上访问此网站的情况下，再使用此功能，否则可能转跳失败。确保手机有QQ音乐软件并处于已登录状态，链接会让你打开QQ音乐，软件打开后看似毫无变化，实则你的QQ音乐访客记录中已经存在了对目标主页的访问纪录，你可以在QQ音乐的访客记录中找到并访问目标主页，注意，如果你没有QQ音乐会员，目标用户会有你的访客记录！</p>
+            <div class="modal-buttons">
+                <button class="action-btn" id="modal-cancel-btn" style="background-color: #6c757d;">溜了溜了</button>
+                <button class="action-btn" id="modal-confirm-btn">B话真多，继续访问！</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const qqInput = document.getElementById('qq-input');
+        const searchBtn = document.getElementById('search-btn');
+        const searchMusicBtn = document.getElementById('search-music-btn');
+        const resultContainer = document.getElementById('result-container');
+        const musicResultContainer = document.getElementById('music-result-container');
+        const errorMessage = document.getElementById('error-message');
+        const loading = document.getElementById('loading');
+        const profileLinkBtn = document.getElementById('profile-link-btn');
+        const customModal = document.getElementById('custom-modal');
+        const musicProfileLink = document.getElementById('music-profile-link');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        let targetUrl = '';
+
+        function resetUI() {
+            resultContainer.style.display = 'none';
+            musicResultContainer.style.display = 'none';
+            errorMessage.style.display = 'none';
+            loading.style.display = 'none';
+            profileLinkBtn.style.display = 'none';
+        }
+
+        musicProfileLink.addEventListener('click', function(event) {
+            event.preventDefault(); 
+            const url = event.currentTarget.href;
+            if (url && !url.endsWith('#')) {
+                targetUrl = url;
+                customModal.style.display = 'flex';
+            }
+        });
+
+        modalCancelBtn.addEventListener('click', function() { customModal.style.display = 'none'; });
+        modalConfirmBtn.addEventListener('click', function() {
+            customModal.style.display = 'none';
+            if (targetUrl) { window.open(targetUrl, '_blank'); }
+        });
+        customModal.addEventListener('click', function(event) {
+            if (event.target === customModal) { customModal.style.display = 'none'; }
+        });
+        
+        searchBtn.addEventListener('click', function() {
+            const qq = qqInput.value.trim();
+            if (!qq || !/^[1-9][0-9]{4,10}$/.test(qq)) {
+                alert('请输入一个有效的QQ号码！');
+                return;
+            }
+            resetUI();
+            loading.style.display = 'block';
+
+            // 并行请求两个API
+            const mainInfoPromise = fetch(`https://api.dwo.cc/api/fh_zcsj?qq=${qq}`, { cache: 'no-cache' })
+                .then(res => res.text())
+                .catch(err => { console.error('Main API failed:', err); return null; }); // 出错时返回null
+
+            const emailPromise = fetch(`https://v.api.aa1.cn/api/qqemail/index.php?qq=${qq}`, { cache: 'no-cache' })
+                .then(res => res.text())
+                .catch(err => { console.error('Email API failed:', err); return null; }); // 出错时返回null
+
+
+            Promise.all([mainInfoPromise, emailPromise])
+                .then(([textData, emailText]) => {
+                    loading.style.display = 'none';
+
+                    if (!textData || textData.includes("查询失败") || textData.includes("无法获取")) {
+                        errorMessage.textContent = `查询失败: ${textData || '主信息接口请求失败'}`;
+                        errorMessage.style.display = 'block';
+                        return;
+                    }
+
+                    const infoMap = new Map();
+                    const lines = textData.split(/\r?\n/);
+                    lines.forEach(line => {
+                        const parts = line.split('：');
+                        if (parts.length === 2 && parts[0].trim()) {
+                            infoMap.set(parts[0].trim(), parts[1].trim());
+                        }
+                    });
+                    
+                    if (infoMap.size === 0) {
+                        errorMessage.textContent = '查询失败: 无法解析返回的数据或QQ号不存在。';
+                        errorMessage.style.display = 'block';
+                        return;
+                    }
+
+                    // 构建用于渲染的最终数据结构
+                    let finalData = {
+                        basic_info: {},
+                        membership_info: {},
+                        opened_services: []
+                    };
+                    
+                    const keyMapping = {
+                        '查询昵称': { key: 'nickname', target: 'basic_info' }, '查询年龄': { key: 'age', target: 'basic_info' },
+                        '查询签名': { key: 'signature', target: 'basic_info' }, '注册时间': { key: 'registrationTimeStr', target: 'basic_info' },
+                        '注册天数': { key: 'registrationDays', target: 'basic_info' }, '活跃天数': { key: 'totalActiveDay', target: 'basic_info' },
+                        '达人天数': { key: 'qzoneExpertDays', target: 'basic_info' }, '头像修改': { key: 'avatarUpdateTime', target: 'basic_info' },
+                        '查询图标': { key: 'qqIcons', target: 'basic_info' }, '查询名片': { key: 'qqCard', target: 'basic_info' },
+                        '查询等级': { key: 'level', target: 'basic_info' }, '查询QID': { key: 'qid', target: 'basic_info' },
+                        '查询能量': { key: 'energy', target: 'basic_info' }, '会员等级': { key: 'membershipLevel', target: 'membership_info' },
+                        '会员经验': { key: 'membershipExp', target: 'membership_info' }, '会员成长': { key: 'membershipGrowth', target: 'membership_info' },
+                    };
+
+                    for (const [description, mapping] of Object.entries(keyMapping)) {
+                        if (infoMap.has(description)) {
+                            finalData[mapping.target][mapping.key] = { description: description, value: infoMap.get(description) };
+                        }
+                    }
+
+                    finalData.basic_info.avatar = { description: '头像', value: `http://q1.qlogo.cn/g?b=qq&nk=${qq}&s=640` };
+                    
+                    // 处理QQ邮箱API返回的数据
+                    if (emailText && emailText.includes('：')) {
+                        const emailValue = emailText.split('：')[1]?.trim();
+                        if (emailValue) {
+                            finalData.basic_info.qqEmail = { description: 'QQ邮箱', value: emailValue };
+                        }
+                    }
+
+                    const serviceKeys = ['月大会员', '年大会员', '普通会员', '超级会员', '年费会员'];
+                    serviceKeys.forEach(serviceName => {
+                        const status = infoMap.get(serviceName);
+                        if (status) { finalData.opened_services.push({ name: serviceName, status: status }); }
+                    });
+
+                    profileLinkBtn.href = `https://api.jkyai.top/API/QQtzmp.php?qq=${qq}`;
+                    profileLinkBtn.style.display = 'inline-block';
+
+                    fillQqInfo(finalData);
+                    resultContainer.style.display = 'block';
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    errorMessage.textContent = '查询出错，请检查网络或API是否可用：' + error.message;
+                    errorMessage.style.display = 'block';
+                });
+        });
+
+        searchMusicBtn.addEventListener('click', function() {
+            const qq = qqInput.value.trim();
+            if (!qq || !/^[1-9][0-9]{4,10}$/.test(qq)) { alert('请输入一个有效的QQ号码！'); return; }
+            resetUI();
+            loading.style.display = 'block';
+            fetch(`https://api.ulq.cc/int/v1/qq_user_playlist?qq=${qq}`, { cache: 'no-cache' }).then(response => response.json()).then(data => {
+                loading.style.display = 'none';
+                if (data.code !== 200 || !data.data) { errorMessage.textContent = `查询失败: ${data.msg || '无法获取QQ音乐信息'}`; errorMessage.style.display = 'block'; return; }
+                const musicData = data.data;
+                document.getElementById('music-nickname').textContent = musicData.nickname || '未知';
+                document.getElementById('music-profile-link').href = musicData.link || '#';
+                const playlistContainer = document.getElementById('playlist-container');
+                playlistContainer.innerHTML = '';
+                if (musicData.list && musicData.list.length > 0) {
+                    musicData.list.forEach(playlist => {
+                        const card = document.createElement('div');
+                        card.className = 'playlist-card';
+                        const picSrc = playlist.pic || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                        card.innerHTML = `<img src="${picSrc}" class="playlist-pic" alt="${playlist.name}" loading="lazy"><h4 class="playlist-name">${playlist.name}</h4><p class="playlist-songs">${playlist.song_cnt} 首歌曲</p>`;
+                        playlistContainer.appendChild(card);
+                    });
+                } else { playlistContainer.textContent = '未找到公开的歌单。'; }
+                musicResultContainer.style.display = 'block';
+            }).catch(error => { loading.style.display = 'none'; errorMessage.textContent = '查询出错：' + error.message; errorMessage.style.display = 'block'; });
+        });
+        
+        function fillQqInfo(data) {
+            const { basic_info, membership_info, opened_services } = data;
+            const basicContainer = document.getElementById('basic-info-container');
+            const servicesContainer = document.getElementById('services-container');
+            basicContainer.innerHTML = '';
+            servicesContainer.innerHTML = '';
+
+            // 填充基本信息，按优化后的顺序
+            if (basic_info) {
+                const basicOrder = [
+                    'avatar', 'nickname', 'level', 'qid', 'signature', 
+                    'registrationTimeStr', 'registrationDays', 'totalActiveDay', 'qzoneExpertDays',
+                    'age', 'energy', 'qqCard', 'qqIcons', 'avatarUpdateTime', 'qqEmail'
+                ];
+                
+                for (const key of basicOrder) {
+                    if (basic_info[key]) {
+                        const item = basic_info[key];
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'grid-item';
+                        
+                        if (key === 'avatar' && item.value && item.value.startsWith('http')) {
+                            itemDiv.innerHTML = `<strong>${item.description}:</strong><img src="${item.value}" alt="头像" class="result-avatar">`;
+                        } else {
+                            itemDiv.innerHTML = `<strong>${item.description}:</strong><span>${item.value || '未设置'}</span>`;
+                        }
+                        basicContainer.appendChild(itemDiv);
+                    }
+                }
+            }
+            
+            // 填充QQ会员信息，按优化后的顺序
+            let hasMembershipInfo = false;
+            
+            if (membership_info && Object.keys(membership_info).length > 0) {
+                hasMembershipInfo = true;
+                const membershipOrder = ['membershipLevel', 'membershipExp', 'membershipGrowth'];
+                for (const key of membershipOrder) {
+                    if (membership_info[key]) {
+                        const item = membership_info[key];
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'grid-item';
+                        itemDiv.innerHTML = `<strong>${item.description}:</strong><span>${item.value}</span>`;
+                        servicesContainer.appendChild(itemDiv);
+                    }
+                }
+            }
+            if (opened_services && opened_services.length > 0) {
+                hasMembershipInfo = true;
+                 opened_services.forEach(service => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'grid-item';
+                    itemDiv.innerHTML = `<strong>${service.name}:</strong><span>${service.status}</span>`;
+                    servicesContainer.appendChild(itemDiv);
+                 });
+            }
+
+            if (!hasMembershipInfo) {
+                servicesContainer.classList.remove('result-grid');
+                servicesContainer.innerHTML = '<span>未查询到任何会员类信息。</span>';
+            } else {
+                servicesContainer.classList.add('result-grid');
+            }
+        }
+    </script>
+</body>
+</html>

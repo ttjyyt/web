@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B站视频解析</title>
+    <style>
+        /* CSS样式与之前完全相同，此处保持不变 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            background-color: #fff;
+            padding: 25px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #000;
+            margin-bottom: 10px;
+        }
+        .notice {
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 25px;
+        }
+        #bili-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        #bv-input {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        #bv-input:focus {
+            border-color: #555;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            background-color: #000;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+        .btn:hover {
+            background-color: #333;
+        }
+        .hidden {
+            display: none;
+        }
+        #loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #555;
+        }
+        #error-message {
+            text-align: center;
+            padding: 20px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        #result-container {
+            margin-top: 30px;
+        }
+        #video-title {
+            font-size: 24px;
+            color: #000;
+        }
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 15px 0;
+        }
+        #author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #eee;
+        }
+        #author-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .video-player-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        #video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #download-btn {
+            margin-top: 15px;
+        }
+        .video-info {
+            margin-top: 25px;
+            line-height: 1.6;
+        }
+        .video-info h3 {
+            border-left: 4px solid #000;
+            padding-left: 10px;
+            margin-bottom: 10px;
+        }
+        #video-desc {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 15px;
+            }
+            #video-title {
+                font-size: 20px;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>B站视频解析</h1>
+        <p class="notice">只支持B站视频 包括番剧 电影 电视剧 都不能解析</p>
+        
+        <form id="bili-form">
+            <input type="text" id="bv-input" placeholder="请输入视频BV号" required>
+            <div class="button-group">
+                <button type="submit" class="btn">解析视频</button>
+                <a href="index.html" class="btn">返回首页</a>
+            </div>
+        </form>
+
+        <div id="loading" class="hidden">🔍 正在努力解析中，请稍候...</div>
+        <div id="error-message" class="hidden"></div>
+        
+        <div id="result-container" class="hidden">
+            <h2 id="video-title"></h2>
+            <div class="author-info">
+                <img id="author-avatar" src="" alt="UP主头像">
+                <span id="author-name"></span>
+            </div>
+            <div class="video-player-wrapper">
+                 <video id="video-player" controls preload="metadata"></video>
+            </div>
+            
+            <a id="download-btn" href="#" class="btn hidden" download>下载视频</a>
+
+            <div class="video-info">
+                <h3>视频简介</h3>
+                <p id="video-desc"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // JavaScript 逻辑开始
+    
+    document.getElementById('bili-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const bvId = document.getElementById('bv-input').value.trim();
+        const resultContainer = document.getElementById('result-container');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error-message');
+        const downloadBtn = document.getElementById('download-btn');
+
+        resultContainer.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+        downloadBtn.classList.add('hidden');
+        
+        if (!bvId) {
+            showError('请输入有效的BV号！');
+            return;
+        }
+        
+        loadingDiv.classList.remove('hidden');
+
+        const apiUrl = `https://api.cenguigui.cn/api/bilibili/api.php?url=https://www.bilibili.com/video/${bvId}`;
+
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络请求失败，请检查网络或API状态。');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingDiv.classList.add('hidden');
+                if (data && data.code === 1) {
+                    displayResults(data);
+                } else {
+                    showError(data.msg || '解析失败，请检查BV号或视频是否受支持。');
+                }
+            })
+            .catch(error => {
+                showError(error.message || '发生未知错误，请稍后再试。');
+            });
+    });
+
+    function displayResults(data) {
+        document.getElementById('result-container').classList.remove('hidden');
+
+        document.getElementById('video-title').textContent = data.title;
+        document.getElementById('video-desc').textContent = data.desc || '（该视频没有简介）';
+        document.getElementById('author-name').textContent = data.user.name;
+
+        // --- 关键修复 ---
+        // 1. 将API返回的 http:// 链接替换为 https://
+        const secureAvatarUrl = data.user.user_img.replace(/^http:\/\//i, 'https://');
+        const securePosterUrl = data.imgurl.replace(/^http:\/\//i, 'https://');
+        
+        // 2. 将处理后的安全链接传递给代理服务器
+        document.getElementById('author-avatar').src = `https://images.weserv.nl/?url=${secureAvatarUrl}`;
+        
+        const videoPlayer = document.getElementById('video-player');
+        videoPlayer.src = data.data[0].video_url;
+        videoPlayer.poster = `https://images.weserv.nl/?url=${securePosterUrl}`;
+
+        const downloadBtn = document.getElementById('download-btn');
+        downloadBtn.href = data.data[0].video_url;
+        downloadBtn.classList.remove('hidden');
+    }
+
+    function showError(message) {
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error-message');
+        
+        loadingDiv.classList.add('hidden');
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+    // JavaScript 逻辑结束
+    </script>
+</body>
+</html>

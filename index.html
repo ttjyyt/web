@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天鲸夭天の小站</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #000000; 
+            color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; 
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .announcement {
+            font-size: 0.85em;
+            color: #dddddd;
+            background-color: rgba(40, 40, 40, 0.85);
+            backdrop-filter: blur(5px);
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 800px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            border-left: 5px solid #ffffff; 
+            text-align: left;
+        }
+        h1 {
+            color: #ffffff;
+            margin-top: 0;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+            transition: color 0.5s ease;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .main-btn {
+            padding: 12px 25px;
+            font-size: 1em;
+            cursor: pointer;
+            border: 1px solid #111;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #000000;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .main-btn:disabled {
+            cursor: not-allowed;
+            background-color: #a0a0a0;
+            color: #555555;
+        }
+        .main-btn:hover {
+            background-color: #e0e0e0;
+            transform: translateY(-2px);
+        }
+        .main-btn:active {
+            transform: translateY(1px);
+        }
+        .main-btn:focus, .main-btn:active {
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .audio-controls {
+            position: fixed; 
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        #playPauseBtn {
+            padding: 8px 16px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background-color: rgba(50, 50, 50, 0.7);
+            backdrop-filter: blur(5px);
+            color: #ffffff;
+            border: 1px solid #ffffff;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #playPauseBtn:hover {
+            background-color: #ffffff;
+            color: #000000;
+            transform: scale(1.05);
+        }
+        #playPauseBtn:focus, #playPauseBtn:active {
+             outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media (min-width: 768px) {
+            h1 { font-size: 3em; }
+            .button-container { gap: 20px; }
+            .main-btn { padding: 15px 30px; font-size: 1.1em; }
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;" onselectstart="return false;">
+
+    <p id="weather-announcement" class="announcement">正在初始化，请稍候…</p>
+    <p class="announcement">网站上次更新时间：上次。</p>
+    
+    <h1 id="main-title">天鲸夭天</h1>
+
+    <div class="button-container">
+        <button class="main-btn" data-href="1.html">扫雷游戏</button>
+        <button class="main-btn" data-href="2.html">拼图游戏</button>
+        <button class="main-btn" data-href="3.html">QQ查询</button>
+        <button class="main-btn" data-href="4.html">音乐搜索</button>
+        <button class="main-btn" data-href="5.html">B站解析</button>
+        <button class="main-btn" data-href="6.html">AI绘画</button>
+    </div>
+
+    <audio id="backgroundAudio" src="1.mp3" loop></audio>
+    
+    <div class="audio-controls">
+        <button id="playPauseBtn">播放音乐</button>
+    </div>
+
+    <script>
+        const audio = document.getElementById('backgroundAudio');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const buttonContainer = document.querySelector('.button-container');
+        const weatherAnnouncement = document.getElementById('weather-announcement');
+        const mainTitle = document.getElementById('main-title');
+        
+        let isPlaying = false;
+        
+        window.addEventListener('load', () => { 
+            audio.pause(); 
+            isPlaying = false; 
+            playPauseBtn.textContent = '播放音乐'; 
+            
+            fetchBackgroundImage(); 
+            fetchWeatherSequence();
+        });
+
+        ['copy', 'cut', 'contextmenu'].forEach(event => { document.addEventListener(event, e => e.preventDefault()); });
+
+        function fetchBackgroundImage() {
+            const apiUrl = `https://www.loliapi.com/acg/?_=${Date.now()}`; 
+            fetch(apiUrl).then(response => { 
+                if (response.ok) { 
+                    document.body.style.backgroundImage = `url(${response.url})`; 
+                } else { 
+                    console.error('背景图API请求失败:', response.statusText); 
+                } 
+            }).catch(error => { 
+                console.error('获取背景图时出错:', error); 
+            }); 
+        }
+        
+        async function fetchWeatherSequence() {
+            try {
+                weatherAnnouncement.textContent = '正在查询天气...';
+                const ipResponse = await fetch(`https://v.api.aa1.cn/api/myip/index.php?aa1=json&_=${Date.now()}`);
+                const ipData = await ipResponse.json();
+                if (!ipData || !ipData.myip) {
+                    throw new Error('IP API返回数据格式不正确');
+                }
+                const userIp = ipData.myip; 
+
+                const targetCityApiUrl = `https://api.tangdouz.com/ipdz.php?ip=${userIp}`; 
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetCityApiUrl)}`; 
+                const cityResponse = await fetch(proxyUrl); 
+                if (!cityResponse.ok) throw new Error(`代理服务器响应错误: ${cityResponse.status}`); 
+                const locationText = await cityResponse.text(); 
+                const districtId = locationText.split(' ')[0].trim(); 
+                if (!districtId || locationText.includes('查询失败')) { 
+                    weatherAnnouncement.textContent = '天气查询失败，可能不支持你的地区。'; 
+                    return; 
+                } 
+                const weatherResponse = await fetch(`https://api.dwo.cc/api/tianqi?districtId=${encodeURIComponent(districtId)}&_=${Date.now()}`); 
+                const weatherData = await weatherResponse.json(); 
+                if (weatherData.code !== 1 || !weatherData.data) { 
+                    throw new Error(weatherData.message || '天气API返回数据格式错误'); 
+                } 
+                const data = weatherData.data; 
+                const formattedWeather = `最后更新时间：${data.dateTime}，城市：${data.city}，天气状况：${data.weather}，实时气温：${data.temp}，体感温度：${data.feelsLike}，相对湿度：${data.rh}，今日最低与最高气温：${data.lowTemp} ~ ${data.highTemp}，风力风向：${data.wind}`; 
+                weatherAnnouncement.textContent = formattedWeather; 
+            } catch (error) { 
+                console.error('天气查询流程出错:', error); 
+                weatherAnnouncement.textContent = '天气查询失败，可能不支持你的地区。'; 
+            }
+        }
+        
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) { 
+                audio.pause(); 
+                playPauseBtn.textContent = '播放音乐'; 
+            } else { 
+                audio.play().catch(error => console.log("播放需要用户交互才能开始。", error)); 
+                playPauseBtn.textContent = '暂停音乐'; 
+            } 
+            isPlaying = !isPlaying; 
+        });
+
+        buttonContainer.addEventListener('click', (event) => {
+            if (event.target.classList.contains('main-btn')) {
+                const button = event.target;
+                const targetUrl = button.dataset.href;
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
